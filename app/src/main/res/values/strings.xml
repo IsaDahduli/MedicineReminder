@@ -1,0 +1,40 @@
+<resources>
+    <string name="app_name">Medicine Reminder</string>
+
+    <string-array name="units">
+        <item>Ampoule(s)</item>
+        <item>Capsule(s)</item>
+        <item>Cream(s)</item>
+        <item>Drop(s)</item>
+        <item>Gram(s)</item>
+        <item>Injection(s)</item>
+        <item>Milligram(s)</item>
+        <item>Millilitre(s)</item>
+        <item>Inhale(s)</item>
+        <item>Tablet(s)</item>
+        <item>Tea Spoon(s)</item>
+        <item>Unit(s)</item>
+    </string-array>
+
+    <string-array name="meal">
+        <item>Before Meal</item>
+        <item>With Meal</item>
+        <item>After Meal</item>
+        <item>Not Specified</item>
+    </string-array>
+
+    <string-array name="interval">
+        <item>15min</item>
+        <item>30min</item>
+        <item>1hr</item>
+        <item>1.5hr</item>
+        <item>2hr</item>
+        <item>3hr</item>
+        <item>4hr</item>
+        <item>6hr</item>
+        <item>8hr</item>
+        <item>12hr</item>
+        <item>24hr</item>
+    </string-array>
+
+</resources>

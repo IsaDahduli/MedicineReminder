@@ -1,0 +1,69 @@
+<androidx.cardview.widget.CardView
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:elevation="4dp"
+        android:padding="16dp">
+
+    <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_vertical">
+
+        <LinearLayout
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+            <TextView
+                    android:id="@+id/medicine_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Medicine Name"
+                    android:textAppearance="?android:attr/textAppearanceLarge"/>
+
+            <TextView
+                    android:id="@+id/medicine_type"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Type"
+                    android:textAppearance="?android:attr/textAppearanceMedium"/>
+
+            <TextView
+                    android:id="@+id/medicine_quantity"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Quantity"
+                    android:textAppearance="?android:attr/textAppearanceMedium"/>
+
+            <TextView
+                    android:id="@+id/medicine_schedule"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Every ... For ..."
+                    android:textAppearance="?android:attr/textAppearanceSmall"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="10px"
+                android:layout_marginRight="10px">
+
+            <Button
+                    android:id="@+id/remove_medicine"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/projectbuttons"
+                    android:text="Remove"
+                    android:textColor="#FFFFFF" />
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
+</androidx.cardview.widget.CardView>
