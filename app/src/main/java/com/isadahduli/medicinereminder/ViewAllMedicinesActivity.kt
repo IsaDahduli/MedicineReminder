@@ -1,39 +1,44 @@
 package com.isadahduli.medicinereminder
 
-import android.app.AlarmManager
 import android.app.ListActivity
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import com.isadahduli.medicinereminder.Database.MedicineDBOperations
 import com.isadahduli.medicinereminder.Model.Medicine
 
-class ViewAllMedicinesActivity : ListActivity() {  // Use `:` for class inheritance in Kotlin
-    private lateinit var medicineOps: MedicineDBOperations  // Using `lateinit` for non-nullable property initialization
-    private var medicines: MutableList<Medicine> = mutableListOf()  // Initialize with an empty mutable list
-    private lateinit var adapter: MedicineAdapter  // Using `lateinit` for non-nullable property initialization
+class ViewAllMedicinesActivity : ListActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {  // Override using `override` keyword
+    private lateinit var medicineOps: MedicineDBOperations  // Non-nullable property initialized later
+    private var medicines: MutableList<Medicine> = mutableListOf()  // Initialize with an empty mutable list
+    private lateinit var adapter: MedicineAdapter  // Non-nullable property initialized later
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_view_all_medicines)
 
+        // Open the database
         medicineOps = MedicineDBOperations(this)
-        medicineOps.open()  // Open the database connection
-        medicines = medicineOps.getAllMedicines().toMutableList()  // Ensure `medicines` is a mutable list
+        medicineOps.open()
 
+        // Fetch all medicines from the database
+        medicines = medicineOps.getAllMedicines().toMutableList()
+
+        // Log the number of medicines retrieved
+        if (medicines.isEmpty()) {
+            Log.d("ViewAllMedicinesActivity", "No medicines found in the database.")
+        } else {
+            Log.d("ViewAllMedicinesActivity", "Medicines fetched: ${medicines.size}")
+        }
+
+        // Initialize the adapter and set it to the list
         adapter = MedicineAdapter(this, medicines)
-        listAdapter = adapter  // Set the adapter using `listAdapter` property
+        listAdapter = adapter
     }
 
     fun removeMedicine(medicine: Medicine) {
-        // Remove the selected medicine from the database
-        medicineOps.deleteMedicine(medicine.MedicineID)
-
-        // Cancel notification by casting the ID to `Int`
-        cancelNotification(medicine.MedicineID.toInt())
+        // Remove the selected medicine from the database and cancel its notifications
+        medicineOps.deleteMedicine(medicine.MedicineID, this)
 
         // Remove the item from the list and notify the adapter
         medicines.remove(medicine)
@@ -44,16 +49,7 @@ class ViewAllMedicinesActivity : ListActivity() {  // Use `:` for class inherita
 
     override fun onDestroy() {
         super.onDestroy()
-        medicineOps.close()  // Close the database connection
-    }
-
-    private fun cancelNotification(notificationId: Int) {
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, MedicineReminderReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(this, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        alarmManager.cancel(pendingIntent)
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(notificationId)
+        // Close the database connection
+        medicineOps.close()
     }
 }

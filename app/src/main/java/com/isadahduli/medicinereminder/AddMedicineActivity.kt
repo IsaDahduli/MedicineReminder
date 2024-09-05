@@ -7,8 +7,10 @@ import android.app.PendingIntent
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
-import android.view.View
+import android.provider.Settings
+import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.isadahduli.medicinereminder.Database.MedicineDBOperations
@@ -194,8 +196,20 @@ class AddMedicineActivity : AppCompatActivity() {
             return
         }
 
+        // Check if Start Date and End Date are the same
+        if (startDate == endDate) {
+            Toast.makeText(this, "Start Date and End Date cannot be the same", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         if (endDate.before(startDate)) {
             Toast.makeText(this, "End Date cannot be before Start Date", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Check if the medicine name is unique
+        if (!medicineDBOperations.isMedicineNameUnique(name)) {
+            Toast.makeText(this, "Medicine name already exists. Please choose a different name.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -214,6 +228,7 @@ class AddMedicineActivity : AppCompatActivity() {
         // Insert the medicine into the database
         medicineDBOperations.addMedicine(medicine)
         scheduleNotification(medicine)
+
         Toast.makeText(this, "Medicine added successfully", Toast.LENGTH_SHORT).show()
 
         // Clear the fields after adding
@@ -236,6 +251,26 @@ class AddMedicineActivity : AppCompatActivity() {
         medicineDBOperations.close() // Close the database connection when the activity is destroyed
     }
 
+    private fun checkExactAlarmPermissionAndSchedule(medicine: Medicine) {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                // Redirect the user to the settings to allow the exact alarms
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(intent)
+            } else {
+                // Permission granted, schedule the notification
+                scheduleNotification(medicine)
+            }
+        } else {
+            // For older Android versions, schedule the notification directly
+            scheduleNotification(medicine)
+        }
+    }
+
     @SuppressLint("ScheduleExactAlarm")
     private fun scheduleNotification(medicine: Medicine) {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -249,8 +284,7 @@ class AddMedicineActivity : AppCompatActivity() {
             putExtra("medicine_interval", getIntervalMillis(medicine.MedicineInterval))
         }
 
-        // Create a unique request code by combining medicineName and the time
-        val requestCode = (medicine.MedicineName + medicine.MedicineTime.replace(":", "")).hashCode()
+        val requestCode = medicine.MedicineName.hashCode()
 
         val pendingIntent = PendingIntent.getBroadcast(
             this,
@@ -259,16 +293,18 @@ class AddMedicineActivity : AppCompatActivity() {
             PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Convert the medicine time to a calendar instance
         val calendar = Calendar.getInstance().apply {
-            timeInMillis = System.currentTimeMillis()
             set(Calendar.HOUR_OF_DAY, getHourFromTimeString(medicine.MedicineTime))
             set(Calendar.MINUTE, getMinuteFromTimeString(medicine.MedicineTime))
             set(Calendar.SECOND, 0)
+
+            if (timeInMillis <= System.currentTimeMillis()) {
+                add(Calendar.DAY_OF_YEAR, 1) // Move to the next day if the time has already passed
+            }
         }
 
-        // Schedule the first alarm to trigger the notification
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+        Log.d("scheduleNotification", "Notification scheduled for: ${calendar.time}")
     }
 
     private fun getIntervalMillis(interval: String): Long {

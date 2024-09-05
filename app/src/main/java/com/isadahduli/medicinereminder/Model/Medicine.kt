@@ -9,7 +9,8 @@ data class Medicine(
     var MedicineMeal: String = "",
     var MedicineInterval: String = "",
     var MedicineStartDate: String = "",
-    var MedicineEndDate: String = ""
+    var MedicineEndDate: String = "",
+    var RequestCode: Int = 0
 ) {
 
     override fun toString(): String {
@@ -20,6 +21,7 @@ data class Medicine(
                 "Medicine Meal: $MedicineMeal\n" +
                 "Medicine Interval: $MedicineInterval\n" +
                 "Medicine Start Date: $MedicineStartDate\n" +
-                "Medicine End Date: $MedicineEndDate"
+                "Medicine End Date: $MedicineEndDate\n" +
+                "Request Code: $RequestCode"  // Include the request code in the toString output
     }
 }

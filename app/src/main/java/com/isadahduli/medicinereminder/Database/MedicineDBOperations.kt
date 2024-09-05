@@ -1,11 +1,16 @@
 package com.isadahduli.medicinereminder.Database
 
+import android.app.AlarmManager
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
+import com.isadahduli.medicinereminder.MedicineReminderReceiver
 import com.isadahduli.medicinereminder.Model.Medicine
 
 class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
@@ -13,7 +18,7 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
     companion object {
         const val LOGTAG = "APPOINT_SYS"
         private const val DATABASE_NAME = "medicine.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2  // Incremented version to handle upgrades
 
         private val allColumns = arrayOf(
             MedicineDBHandler.COLUMN_MEDICINE_ID,
@@ -24,7 +29,8 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
             MedicineDBHandler.COLUMN_MEDICINE_MEAL,
             MedicineDBHandler.COLUMN_MEDICINE_INTERVAL,
             MedicineDBHandler.COLUMN_MEDICINE_START,
-            MedicineDBHandler.COLUMN_MEDICINE_END
+            MedicineDBHandler.COLUMN_MEDICINE_END,
+            MedicineDBHandler.COLUMN_REQUEST_CODE  // Include request_code in allColumns
         )
     }
 
@@ -41,15 +47,17 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
                 ${MedicineDBHandler.COLUMN_MEDICINE_MEAL} TEXT,
                 ${MedicineDBHandler.COLUMN_MEDICINE_INTERVAL} TEXT,
                 ${MedicineDBHandler.COLUMN_MEDICINE_START} TEXT,
-                ${MedicineDBHandler.COLUMN_MEDICINE_END} TEXT
+                ${MedicineDBHandler.COLUMN_MEDICINE_END} TEXT,
+                ${MedicineDBHandler.COLUMN_REQUEST_CODE} INTEGER 
             )
         """.trimIndent()
         db.execSQL(CREATE_MEDICINE_TABLE)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS ${MedicineDBHandler.TABLE_MEDICINE}")
-        onCreate(db)
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE ${MedicineDBHandler.TABLE_MEDICINE} ADD COLUMN ${MedicineDBHandler.COLUMN_REQUEST_CODE} INTEGER DEFAULT 0")
+        }
     }
 
     fun open() {
@@ -67,6 +75,8 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
     }
 
     fun addMedicine(medicine: Medicine): Medicine {
+        val requestCode = (medicine.MedicineName + medicine.MedicineTime.replace(":", "")).hashCode()
+
         val values = ContentValues().apply {
             put(MedicineDBHandler.COLUMN_MEDICINE_NAME, medicine.MedicineName)
             put(MedicineDBHandler.COLUMN_MEDICINE_QUANTITY, medicine.MedicineQuantity)
@@ -76,10 +86,12 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
             put(MedicineDBHandler.COLUMN_MEDICINE_INTERVAL, medicine.MedicineInterval)
             put(MedicineDBHandler.COLUMN_MEDICINE_START, medicine.MedicineStartDate)
             put(MedicineDBHandler.COLUMN_MEDICINE_END, medicine.MedicineEndDate)
+            put(MedicineDBHandler.COLUMN_REQUEST_CODE, requestCode)  // Store the request code
         }
 
         val insertMedicineID = database?.insert(MedicineDBHandler.TABLE_MEDICINE, null, values) ?: -1
         medicine.MedicineID = insertMedicineID
+        medicine.RequestCode = requestCode  // Ensure it's stored in the Medicine object as well
         return medicine
     }
 
@@ -97,15 +109,16 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
         cursor?.use {
             if (it.moveToFirst()) {
                 return Medicine(
-                    MedicineID = it.getLong(0),
-                    MedicineName = it.getString(1),
-                    MedicineQuantity = it.getString(2),
-                    MedicineUnit = it.getString(3),
-                    MedicineTime = it.getString(4),
-                    MedicineMeal = it.getString(5),
-                    MedicineInterval = it.getString(6),
-                    MedicineStartDate = it.getString(7),
-                    MedicineEndDate = it.getString(8)
+                    MedicineID = it.getLong(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_ID)),
+                    MedicineName = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_NAME)),
+                    MedicineQuantity = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_QUANTITY)),
+                    MedicineUnit = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_UNIT)),
+                    MedicineTime = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_TIME)),
+                    MedicineMeal = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_MEAL)),
+                    MedicineInterval = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_INTERVAL)),
+                    MedicineStartDate = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_START)),
+                    MedicineEndDate = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_END)),
+                    RequestCode = it.getInt(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_REQUEST_CODE))  // Retrieve request_code
                 )
             }
         }
@@ -135,7 +148,8 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
                     MedicineMeal = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_MEAL)),
                     MedicineInterval = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_INTERVAL)),
                     MedicineStartDate = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_START)),
-                    MedicineEndDate = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_END))
+                    MedicineEndDate = it.getString(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_MEDICINE_END)),
+                    RequestCode = it.getInt(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_REQUEST_CODE))  // Retrieve request_code
                 )
                 medicines.add(medicine)
             }
@@ -153,6 +167,7 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
             put(MedicineDBHandler.COLUMN_MEDICINE_INTERVAL, medicine.MedicineInterval)
             put(MedicineDBHandler.COLUMN_MEDICINE_START, medicine.MedicineStartDate)
             put(MedicineDBHandler.COLUMN_MEDICINE_END, medicine.MedicineEndDate)
+            put(MedicineDBHandler.COLUMN_REQUEST_CODE, medicine.RequestCode)  // Ensure request_code is updated
         }
 
         return database?.update(
@@ -163,11 +178,66 @@ class MedicineDBOperations(context: Context) : SQLiteOpenHelper(context, DATABAS
         ) ?: 0
     }
 
-    fun deleteMedicine(medicineId: Long) {
+    fun deleteMedicine(medicineId: Long, context: Context) {
+        // Use getRequestCodeForMedicine to retrieve the requestCode before deleting the medicine
+        val requestCode = getRequestCodeForMedicine(medicineId)
+
+        if (requestCode != -1) {
+            cancelNotification(context, requestCode)
+        }
+
+        // Now delete the medicine from the database
         database?.delete(
             MedicineDBHandler.TABLE_MEDICINE,
             "${MedicineDBHandler.COLUMN_MEDICINE_ID} = ?",
             arrayOf(medicineId.toString())
         )
     }
+
+    private fun cancelNotification(context: Context, requestCode: Int) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, MedicineReminderReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(requestCode)
+    }
+
+    fun isMedicineNameUnique(medicineName: String): Boolean {
+        val db = this.readableDatabase
+        val cursor = db.rawQuery("SELECT COUNT(*) FROM ${MedicineDBHandler.TABLE_MEDICINE} WHERE ${MedicineDBHandler.COLUMN_MEDICINE_NAME} = ?", arrayOf(medicineName))
+        cursor.moveToFirst()
+        val count = cursor.getInt(0)
+        cursor.close()
+        return count == 0
+    }
+
+    fun getRequestCodeForMedicine(medicineId: Long): Int {
+        val cursor: Cursor? = database?.query(
+            MedicineDBHandler.TABLE_MEDICINE,
+            arrayOf(MedicineDBHandler.COLUMN_REQUEST_CODE),
+            "${MedicineDBHandler.COLUMN_MEDICINE_ID} = ?",
+            arrayOf(medicineId.toString()),
+            null,
+            null,
+            null
+        )
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                return it.getInt(it.getColumnIndexOrThrow(MedicineDBHandler.COLUMN_REQUEST_CODE))
+            }
+        }
+
+        Log.e("MedicineReminderReceiver", "Failed to find requestCode for medicineId: $medicineId")
+        return -1  // Return a default value to indicate failure
+    }
+
+
 }
